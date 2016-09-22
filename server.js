@@ -29,18 +29,35 @@ app.get('/search/:name', function(req, res) {
         type: 'artist'
     });
 
+    // Call for artist
     searchReq.on('end', function(item) {
-        // create artist obj using res (item)
         var artist = item.artists.items[0];
         var relArtist = artist.id + '/related-artists';
-        // submit next api call for related artists
         var relatedReq = getFromApi('artists/' + relArtist);
 
+
+        // Call for related artists
         relatedReq.on('end', function(item) {
-        // Add .related to artist obj
-        artist.related = item.artists;
-        // Return artist obj
-        res.json(artist);
+            artist.related = item.artists;
+            console.log(artist.related[0].id);
+
+            // iterate over realted artists
+            artist.related.forEach(function(artistInfo) {
+               var artistId = artistInfo.id + '/top-tracks';
+               var topTrackReq = getFromApi('artists/' + artistId, {
+                 country: 'us'
+               });
+
+              // Call for top tracks of each related artist
+              topTrackReq.on('end', function(item) {
+                  artist.related.tracks = item.tracks;
+                  res.json(artist);
+              });
+
+              topTrackReq.on('error', function(code) {
+                res.sendStatus(code);
+              });
+            });
         });
 
         relatedReq.on('error', function(code) {
